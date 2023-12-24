@@ -2,15 +2,15 @@
 {-# LANGUAGE InstanceSigs #-}
 
 {-|
-Module      : Bio.Topparse
-Description : Gromacs topology parser
+Module      : Bio.Gromacs.Top.Lexer
+Description : Gromacs topology lexer
 Copyright   : (c) Danila Iakovlev, 2023
 License     : LGPL3
 Maintainer  : moleculadesigner@gmail.com
 Stability   : experimental
 Portability : POSIX
 
-Module contains simple Gromacs topology parser with
+Module contains simple Gromacs topology lexer with
 no preprocessing on `grompp` directives
 -}
 module Bio.Gromacs.Top.Lexer
@@ -21,36 +21,20 @@ where
 import Prelude hiding (length)
 
 import Data.Text.Lazy as T (pack, Text, length)
-import qualified Data.List.NonEmpty as N
-import Data.Maybe ( fromJust )
+import Data.Maybe (fromJust)
+import Data.Void
+import Data.Foldable (Foldable(toList))
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty.Extra ((|:))
 
 import Text.Megaparsec hiding (State, Token)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
---import Control.Applicative hiding (some, many)
---import Control.Monad.Identity
---import Control.Monad.State.Strict
-
-import Data.Void
-import Data.Foldable (Foldable(toList))
 import Control.Monad (void)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty.Extra ((|:))
-
---data Topology = Topology
---    { sections :: [Section]
---    } deriving (Show)
-
---
---data Section = Section T.Text
---    deriving (Show)
-
---data Entry = Entry T.Text
---    deriving (Show)
 
 
--- | Bsic Parsec type alias
+-- | Basic Parsec type alias
 type Parser = Parsec Void Text
 
 {-  # Lexer
@@ -58,7 +42,7 @@ type Parser = Parsec Void Text
 Splits the input stream to the tokens
 -}
 
--- | A `Token` has a source position and a type. 
+-- | A `Token` has an offset position and a type. 
 data Token
     = Token
     { tokenOffset :: !Int
@@ -100,14 +84,14 @@ tokenTypeSize t = mkPos $
         AngledText txt -> (+ 2) . fromIntegral . T.length $ txt
         Eof            -> 1
 
--- | Space Consumer with line comment
+-- | Space Consumer
 sc :: Parser ()
 sc = L.space
     hspace1
     empty
     empty
 
--- | Combinator to easily add the current source position to a `Token`
+-- | Combinator to easily add the current source offset to a `Token`
 withOffset
     :: MonadParsec e s m
     => (Int -> m a)
